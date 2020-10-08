@@ -1,5 +1,3 @@
-from functools import reduce
-
 class SyntaxChecker:
     # Keywords and reserved words are listed here.
     # ASCII printable characters will be checked through ord() 
