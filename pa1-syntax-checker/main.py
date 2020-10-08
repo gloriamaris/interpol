@@ -1,3 +1,5 @@
+from functools import reduce
+
 class SyntaxChecker:
     # Keywords and reserved words are listed here.
     # ASCII printable characters will be checked through ord() 
@@ -9,6 +11,7 @@ class SyntaxChecker:
         }
 
         self.grammar = {
+            "COMMENT": "#string",
             "OPERATOR": "OP int int",
             "DISPLAY": "DIS string",
             "MARKER": "MARK"
@@ -35,7 +38,7 @@ class SyntaxChecker:
         except ValueError:
             return False
 
-    # Lexicon checkers
+    # Lexicon validators
     def is_start_marker(self, token):
         return self.check_if_marker(token, "start")
 
@@ -51,8 +54,11 @@ class SyntaxChecker:
     def is_string_literal(self, token): 
         return True if (token[0] == '"' and token[len(token) - 1] == '"' and self.check_ascii(token)) else False
     
+    def is_comment(self, token):
+        return True if token[0] == '#' else False
+
     def check_ascii(self, token):
-        return len(token) == len(token.encode())
+        return True if len(token) == len(token.encode()) else False
 
     # Lexicon checkers
     def check_lexicon(self, token):
@@ -66,22 +72,84 @@ class SyntaxChecker:
             return "int"
         if (self.is_string_literal(token) == True):
             return "string"
-        
+        if (self.is_comment(token) == True):
+            return "#string"
+
         return False
     
-    def check_syntax(self, line_of_code):
-        tokens = line_of_code.split()
+    def filter_comments(self, tokens): 
+        new_tokens = []
         index = 0
+        commentIndex = 0
+
+        # Find comments and ignore them
+        for token in tokens:
+            print('token ', token[0])
+            if (token[0] == '#'):
+                commentIndex = index
+                break
+            index += 1
+        
+        new_tokens = tokens[:commentIndex]
+
+        return tokens if len(new_tokens) == 0 else new_tokens
+        
+    
+    def group_parentheses(self, tokens):
+        new_tokens = []
+        count = 0 
+        index = 0
+        processed_string = ""
+        
+        if (len(tokens) == 2):
+            second_token = tokens[1]
+            if(second_token[0] == '"' and second_token[len(second_token)-1] == '"'):
+                return tokens
+
+        # groups the strings by parenthesis
+        for token in tokens:
+            if (token[0] == '"' or token[len(token)-1] == '"'):
+                count += 1
+                print(token)
+    
+            if (count == 1 or count == 2):
+                processed_string += token
+
+            if (count == 0 or count == 3):
+                new_tokens.append(token)
+            
+            if count == 2:
+                new_tokens.append(processed_string)
+                count += 1
+
+        return new_tokens
+
+    def clean_up_line(self, line_of_code):
+        tokens = line_of_code.split()
+
+        if (len(tokens) == 1):
+            return tokens
+
+        # remove comments first, then group the parentheses
+        new_tokens = self.filter_comments(tokens)
+        new_tokens = self.group_parentheses(new_tokens)
+
+        return new_tokens
+
+    def check_syntax(self, line_of_code):
+        tokens = self.clean_up_line(line_of_code)
+        
         is_valid_syntax = True
         is_valid_grammar = False
         produced_grammar = []
 
-        print("tokens", tokens)
+        # the entire line is a comment
+        if (len(tokens) == 0):
+            return True
 
         # generate the grammar produced from the line of code
         for token in tokens:
             keyword = self.check_lexicon(token)
-
             if (keyword == False):
                 is_valid_syntax = False
                 break
@@ -128,5 +196,6 @@ class SyntaxChecker:
 
         print("Thank you for using the syntax checker")
 
+# starts the process
 syntaxChecker = SyntaxChecker()
 syntaxChecker.execute()
