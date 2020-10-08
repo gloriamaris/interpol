@@ -82,17 +82,16 @@ class SyntaxChecker:
 
         # Find comments and ignore them
         for token in tokens:
-            print('token ', token[0])
-            if (token[0] == '#'):
-                commentIndex = index
-                break
             index += 1
-        
-        new_tokens = tokens[:commentIndex]
+            commentIndex = index
 
-        return tokens if len(new_tokens) == 0 else new_tokens
-        
-    
+            if (token[0] == '#'):
+                commentIndex -= 1
+                break
+
+        new_tokens = tokens[:commentIndex]
+        return new_tokens
+
     def group_parentheses(self, tokens):
         new_tokens = []
         count = 0 
@@ -108,8 +107,7 @@ class SyntaxChecker:
         for token in tokens:
             if (token[0] == '"' or token[len(token)-1] == '"'):
                 count += 1
-                print(token)
-    
+
             if (count == 1 or count == 2):
                 processed_string += token
 
@@ -130,7 +128,9 @@ class SyntaxChecker:
 
         # remove comments first, then group the parentheses
         new_tokens = self.filter_comments(tokens)
-        new_tokens = self.group_parentheses(new_tokens)
+
+        if (len(new_tokens) > 1):
+            new_tokens = self.group_parentheses(new_tokens)
 
         return new_tokens
 
@@ -151,11 +151,10 @@ class SyntaxChecker:
             if (keyword == False):
                 is_valid_syntax = False
                 break
-                
+
             produced_grammar.append(keyword)
 
         final_grammar = " ".join(produced_grammar) 
-        print(final_grammar)
         
         # compare to the list of valid grammars
         for key, val in self.grammar.items():
