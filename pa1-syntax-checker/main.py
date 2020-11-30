@@ -18,7 +18,7 @@ class ExpressionsEvaluator:
         
         # subtracts num2 from num1
         if (op == "SUB"):
-            result = val2 - val1
+            result = val1 - val2
         
         # multiplies num1 and num2
         if (op == "MUL"):
@@ -30,6 +30,13 @@ class ExpressionsEvaluator:
                 result = "Error: Division by zero"
             else:
                 result = int(val1 / val2)
+
+        # gets the remainder of num1/num2
+        if (op == "MOD"):
+            if (val2 == 0):
+                result = "Error: Division by zero"
+            else:
+                result = int(val1 % val2)
 
         print(result)
 
