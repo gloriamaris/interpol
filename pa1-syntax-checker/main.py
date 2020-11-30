@@ -1,3 +1,47 @@
+class ExpressionsEvaluator:
+    def __init__(self, tokens, method):
+        self.tokens = tokens
+        self.method = method
+
+    def print_string(self, value):
+        cleaned_value = value.replace('"', '')
+        print(cleaned_value)
+
+    def calculate(self, op, val1, val2):
+        val1 = int(val1)
+        val2 = int(val2)
+        result = ''
+
+        # adds num1 and num2
+        if (op == "ADD"):
+            result = val1 + val2
+        
+        # subtracts num2 from num1
+        if (op == "SUB"):
+            result = val2 - val1
+        
+        # multiplies num1 and num2
+        if (op == "MUL"):
+            result = val1 * val2
+        
+        # divides num1 by num2
+        if (op == "DIV"):
+            if (val2 == 0):
+                result = "Error: Division by zero"
+            else:
+                result = int(val1 / val2)
+
+        print(result)
+
+    # basically, executes the operation given
+    # using the tokens
+    def execute(self):
+        if (self.method == "DISPLAY"):
+            self.print_string(self.tokens[1])
+        
+        if (self.method == "OPERATOR"):
+            self.calculate(self.tokens[0], self.tokens[1], self.tokens[2])
+
 class SyntaxChecker:
     # Keywords and reserved words are listed here.
     # ASCII printable characters will be checked through ord() 
@@ -14,6 +58,10 @@ class SyntaxChecker:
             "DISPLAY": "DIS string",
             "MARKER": "MARK"
         }
+
+        self.final_produced_grammar = ''
+        self.operation = ''
+        self.final_tokens = ''
 
     # token     <string>
     # order     "start", "end"
@@ -154,11 +202,16 @@ class SyntaxChecker:
 
             produced_grammar.append(keyword)
 
-        final_grammar = " ".join(produced_grammar) 
-        
+        final_grammar = " ".join(produced_grammar)
+
+        # add to global variable for ease of access
+        self.final_produced_grammar = final_grammar
+        self.final_tokens = tokens
+
         # compare to the list of valid grammars
         for key, val in self.grammar.items():
             if (val == final_grammar):
+                self.operation = key
                 is_valid_grammar = True
 
         return True if (is_valid_grammar and is_valid_syntax) else False
@@ -185,8 +238,12 @@ class SyntaxChecker:
                     begin_message_displayed = True
                 else:
                     is_syntax_valid = self.check_syntax(line_of_code)
-                    message_type = "correct" if is_syntax_valid else "incorrect"
-                    print(self.display_output(message_type))
+
+                    if (is_syntax_valid == True):
+                        exprEvaluator = ExpressionsEvaluator(self.final_tokens, self.operation)
+                        exprEvaluator.execute()
+                    else:
+                        print(self.display_output("incorrect"))
 
             else:
                 self.display_welcome_message()
