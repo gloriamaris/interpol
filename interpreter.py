@@ -4,17 +4,47 @@ class SyntaxChecker:
   def __init__(self, filename):
     self.filename = filename
 
+    # List of error messages
+    self.error_messages = {
+      "VAR_NOT_DECLARED": "Variable is not declared",
+      "DUPLICATE_VAR": "Duplicate variable declaration",
+      "INCOMP_DATA_TYPE": "Incompatible data type",
+      "INVALID_SYNTAX": "Invalid syntax",
+      "INVALID_OP": "Invalid arithmetic operation",
+      "INVALID_EXPR": "Invalid expression",
+      "INVALID_DATA_TYPE": "Invalid data type",
+      "INVALID_DATA_TYPE_INPUT": "Invalid data type input",
+      "INVALID_EOF": "Invalid end of file"
+    }
+
   def execute(self):
     is_valid = True
+    is_complete_section = False
 
-    with open(self.filename) as f:
-      line = f.readline()
+    with open(self.filename, "r") as f:
       count = 1
+      last_line = ""
 
-      while line:
+      for line in f:
         print("Line {}, {}".format(count, line.strip()))
-        line = f.readline()
+
+        # check if complete section
+        if (count == 1 and line == "BEGIN"):
+          is_complete_section = True
+
+        if (line != ""):
+          last_line = line
+
         count += 1
+  
+
+    if (last_line != "END"):
+      is_complete_section = False
+      print("Error at Line {}: {}".format(count-1, self.error_messages["INVALID_EOF"]))
+
+    
+    print("Last line")
+    print(last_line)
 
 
 
@@ -36,16 +66,13 @@ class Interpreter:
     proceed = True
 
     try:
-      # If file is invalid - does not end in .ipol
-      if (filename.find(".ipol") == -1):
+      if (filename.find(".ipol") == -1):                    # If file is invalid - does not end in .ipol
         print(self.error_messages["INVALID_FILE"])
         proceed = False
-      elif (os.path.exists(filename) == False):
-        # If file does not exist - size of the file in bytes is 0
+      elif (os.path.exists(filename) == False):             # If file does not exist - size of the file in bytes is 0
         print(self.error_messages["FILE_NOT_FOUND"])
         proceed = False
-      # If file is empty
-      elif (os.stat(filename).st_size == 0):
+      elif (os.stat(filename).st_size == 0):                # If file is empty
         print(self.error_messages["FILE_EMPTY"])
         proceed = False
     except FileNotFoundError:
