@@ -88,10 +88,7 @@ class ExpressionsEvaluator:
                 token_list.append(token)
         
         return token_list
-
-    def peek_stack(self):
-        last_index = len(self.expr_stack) - 1
-        return self.expr_stack.pop[last_index]
+    
     
     def calculate_basic_math(self, val1, val2, op):
         result = 0
@@ -137,45 +134,49 @@ class ExpressionsEvaluator:
     def execute(self):
         self.expr_stack = self.push_tokens(self.tokens)
         should_display = False
-        val_1 = ""
-        val_2 = ""
-        method = ""
+        values = []
+        value_types = []
+        index = 0
         
-        if (self.validate_lexeme(val_1) == "MARKER"):
+        last_item = self.expr_stack[len(self.expr_stack) - 1]
+
+        if (self.validate_lexeme(last_item) == "MARKER"):
             self.expr_stack = []
         else:
             while len(self.expr_stack) > 1:
-                print(self.expr_stack)
-                val_1 = self.expr_stack.pop()
-                val_1_type = self.validate_literal(val_1)
-                
+                values.append(self.expr_stack.pop())
+                value_types.append(self.validate_literal(values[index]))
+        
                 # returns an error of val1 is an int BUT val2 is not
                 # CASE 1. MATHEMATICAL OPERATIONS ======
-                if (val_1_type == "int"):
-                    val_2 = self.expr_stack.pop()
-                    literal_type = self.validate_literal(val_2)
+                if (value_types[index] == "int"):
+                    index += 1
+                    values.append(self.expr_stack.pop())
+                    value_types.append(self.validate_literal(values[index]))
+                    literal_type = value_types[index]
 
                     if (literal_type == "int"):
                         method = self.expr_stack.pop()
-                        result = self.calculate_basic_math(int(val_1), int(val_2), method)
+                        result = self.calculate_basic_math(int(values[index - 1]), int(values[index]), method)
                         self.expr_stack.append(str(result))
                     elif (literal_type == "str"):                           # error
                         self.throw_error("Invalid expression")
                     else:
-                        lexeme_type = self.validate_lexeme(val_2)
+                        lexeme_type = self.validate_lexeme(values[index])
 
                         if (lexeme_type == "OUTPUT"):
                             should_display = True
-                            self.expr_stack.append(val_1)
-                        
-                if (val_1_type == "str"):
-                    val_2 = self.expr_stack.pop()
-                    
-                    if (self.validate_lexeme(val_2) == "OUTPUT"):
+                            self.expr_stack.append(values[index - 1])
+                elif (value_types[index] == "str"):
+                    index += 1
+                    values.append(self.expr_stack.pop())
+                    value_types.append(self.validate_lexeme(values[index]))
+                    lexeme_type = value_types[index]
+
+                    if (lexeme_type == "OUTPUT"):
                         should_display = True
-                        self.expr_stack.append(val_1)
+                        self.expr_stack.append(values[index - 1])
                 
-        
         return self.expr_stack.pop() if should_display == True else None
 
                 
@@ -207,7 +208,7 @@ class TokenGenerator:
         new_tokens = []
         count = 0
         processed_string = ""
-        
+
         if (len(tokens) == 2):
             second_token = tokens[1]
             if(second_token[0] == '"' and second_token[len(second_token)-1] == '"'):
@@ -215,7 +216,6 @@ class TokenGenerator:
 
         # groups the strings by parenthesis
         for token in tokens:
-            
             if (token[0] == '"' or token[len(token)-1] == '"'):
                 count += 1
 
@@ -228,7 +228,7 @@ class TokenGenerator:
             if (count == 2):
                 new_tokens.append(processed_string[:len(processed_string)-1])
                 count += 1
-    
+                
         return new_tokens
     
     # does clean up for code
@@ -311,7 +311,7 @@ class Interpreter:
             else:
                 tokenGenerator = TokenGenerator()
                 tokens = tokenGenerator.execute(line)
-
+                
                 evaluator = ExpressionsEvaluator(tokens, count)
                 result = evaluator.execute()
                 output_list.append(result)
