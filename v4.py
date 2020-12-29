@@ -42,12 +42,15 @@ class ExpressionsEvaluator:
             "INPUT": ["INPUT"],
         }
     
-    def validate_lexeme(self, token):
-        for key in self.lexemes:
-            if (token in self.lexemes[key]):
-                return key
-            
-        return False
+    def validate_lexeme(self, token, key = ""):
+        if (key == ""):
+            for key in self.lexemes:
+                if (token in self.lexemes[key]):
+                    return key
+
+            return False
+        else:
+            return True if token in self.lexemes[key] else False
 
     def is_int(self, token):
         try:
@@ -85,42 +88,96 @@ class ExpressionsEvaluator:
                 token_list.append(token)
         
         return token_list
-    
-    def pop_stack(self):
-        last_index = len(self.expr_stack) - 1
-        return self.expr_stack.pop(last_index)
 
     def peek_stack(self):
         last_index = len(self.expr_stack) - 1
         return self.expr_stack.pop[last_index]
     
-    def calculate_basic_math(self, val1, val2, operation):
-        
+    def calculate_basic_math(self, val1, val2, op):
+        result = 0
+
+        if (self.validate_lexeme(op, "BASIC_OP") != False):
+            # adds num1 and num2
+            if (op == "ADD"):
+                result = val1 + val2
+            
+            # subtracts num2 from num1
+            if (op == "SUB"):
+                result = val1 - val2
+            
+            # multiplies num1 and num2
+            if (op == "MUL"):
+                result = val1 * val2
+            
+            # divides num1 by num2
+            if (op == "DIV"):
+                if (val2 == 0):
+                    result = "Error: Division by zero"
+                else:
+                    result = int(val1 / val2)
+
+            # gets the remainder of num1/num2
+            if (op == "MOD"):
+                if (val2 == 0):
+                    result = "Error: Division by zero"
+                else:
+                    result = int(val1 % val2)
+
+            return result
+        else:
+            self.throw_error("Invalid syntax")
     
-    def throw_error(self, )
+    def throw_error(self, message):
+        line = " ".join(self.tokens)
+        print("{} at Line number [{}]".format(message, self.line_num))
+        print("{}".format(line))
+
+        raise Exception(message)
     
     def execute(self):
         self.expr_stack = self.push_tokens(self.tokens)
-        is_processing = True
+        should_display = False
         val_1 = ""
         val_2 = ""
         method = ""
         
-        while (is_processing == True):
-            val_1 = self.pop_stack()
-            val_2 = self.pop_stack()
-            # CASE 1. MATHEMATICAL OPERATIONS ======
-            
-            # returns an error of val1 is an int BUT val2 is not
-            if (self.validate_literal(val_1) == "int" and self.validate_literal(val_1) == "int"):
-                method = self.pop_stack()
+        if (self.validate_lexeme(val_1) == "MARKER"):
+            self.expr_stack = []
+        else:
+            while len(self.expr_stack) > 1:
+                print(self.expr_stack)
+                val_1 = self.expr_stack.pop()
+                val_1_type = self.validate_literal(val_1)
                 
+                # returns an error of val1 is an int BUT val2 is not
+                # CASE 1. MATHEMATICAL OPERATIONS ======
+                if (val_1_type == "int"):
+                    val_2 = self.expr_stack.pop()
+                    literal_type = self.validate_literal(val_2)
+
+                    if (literal_type == "int"):
+                        method = self.expr_stack.pop()
+                        result = self.calculate_basic_math(int(val_1), int(val_2), method)
+                        self.expr_stack.append(str(result))
+                    elif (literal_type == "str"):                           # error
+                        self.throw_error("Invalid expression")
+                    else:
+                        lexeme_type = self.validate_lexeme(val_2)
+
+                        if (lexeme_type == "OUTPUT"):
+                            should_display = True
+                            self.expr_stack.append(val_1)
+                        
+                if (val_1_type == "str"):
+                    val_2 = self.expr_stack.pop()
+                    
+                    if (self.validate_lexeme(val_2) == "OUTPUT"):
+                        should_display = True
+                        self.expr_stack.append(val_1)
                 
+        
+        return self.expr_stack.pop() if should_display == True else None
 
-            val_2 = self.pop_stack()
-            
-
-        print(self.expr_stack)
                 
 #
 #   TokenGenerator Class
@@ -240,27 +297,28 @@ class Interpreter:
     is_valid_program = True
     filename = ""
     count = 0
+    output_list = []
 
     filename = input("Enter INTERPOL file: ")
     is_valid_program = self.validate_file(filename)
 
-    if (is_valid_program == True):
-        with open(filename, "r") as f:
-            for line in f:
-                count += 1
-                
-                if (count == 1 and line != "BEGIN"):
-                    is_valid_program = False
-                else:
-                    tokenGenerator = TokenGenerator()
-                    tokens = tokenGenerator.execute(line)
+    with open(filename, "r") as f:
+        for line in f:
+            count += 1
+            
+            if (count == 1 and line != "BEGIN"):
+                is_valid_program = False
+            else:
+                tokenGenerator = TokenGenerator()
+                tokens = tokenGenerator.execute(line)
 
-                    evaluator = ExpressionsEvaluator(tokens)
-                    evaluator.execute()
+                evaluator = ExpressionsEvaluator(tokens, count)
+                result = evaluator.execute()
+                output_list.append(result)
 
-        #   tokenTable = TokenTable(filename)
-        #   tokenTable.display_table()
-
+    for item in output_list:
+        if (item != None):
+            print(item.replace('"', ''))
 
 
 # Starts the program
