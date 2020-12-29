@@ -1,0 +1,5 @@
+BEGIN
+MUL 1 2
+PRINT "this is a string"
+PRINTLN "this is a string new line"
+END
