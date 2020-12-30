@@ -1,4 +1,4 @@
-import os
+import os, re
 
 
 #
@@ -7,9 +7,10 @@ import os
 #   - evaluates using the operation specified
 #
 class ExpressionsEvaluator:
-    def __init__(self, tokens, line_num):
+    def __init__(self, tokens, line_num, global_variables):
         self.tokens = tokens
         self.line_num = line_num
+        self.global_variables = global_variables
         self.expr_stack = []
 
         # List of error messages
@@ -67,6 +68,9 @@ class ExpressionsEvaluator:
     
     def check_ascii(self, token):
         return True if len(token) == len(token.encode()) else False
+
+    def is_identifier(self, token):
+        return True if (len(token) > 0 and len(token) <= 50) and re.match('^[a-zA-Z0-9_]+$', token) and self.validate_lexeme(token) == False else False
     
     def validate_literal(self, token):
         if (self.is_number(token) == True):
@@ -82,9 +86,10 @@ class ExpressionsEvaluator:
         for token in tokens:
             lexeme_value = self.validate_lexeme(token)
             literal_value = self.validate_literal(token)
+            is_identifier = self.is_identifier(token)
             
             # if the tokens are valid elements in the program
-            if (lexeme_value != False or literal_value != False):
+            if (lexeme_value != False or literal_value != False or is_identifier == True):
                 token_list.append(token)
         
         self.expr_stack = token_list
@@ -140,6 +145,20 @@ class ExpressionsEvaluator:
         
         if (op == "ROOT"):
             return int(val2 ** (1/val1))
+
+    def check_globals_for_duplicate(self, variable_name, data_type):
+        for key in self.global_variables[data_type]:
+            if (key == variable_name):
+                self.throw_error("Duplicate variable declaration")
+
+    def store_variable(self, data_type, variable_name, value):
+        if (len(self.global_variables["int"]) > 0):
+            self.check_globals_for_duplicate(variable_name, "int")
+        
+        if (len(self.global_variables["str"]) > 0):
+            self.check_globals_for_duplicate(variable_name, "str")
+        
+        self.global_variables[data_type][variable_name] = value
     
     def throw_error(self, message):
         line = " ".join(self.tokens)
@@ -164,7 +183,9 @@ class ExpressionsEvaluator:
                 value = self.pop_token()
                 literal_type = self.validate_literal(value)
                 lexeme_type = self.validate_lexeme(value)
+                is_identifier = self.is_identifier(value)
 
+                print(literal_type, lexeme_type, is_identifier)
                 # operations
                 if (literal_type == "int"):
                     if (len(token_stack) > 0 and token_stack_type == "str"):
@@ -174,7 +195,6 @@ class ExpressionsEvaluator:
                             token_stack_type = literal_type
                         
                         token_stack.append(value)
-
                 elif (literal_type == "str"):
                     if (len(token_stack) > 0 and token_stack_type == "int"):
                         self.throw_error("Invalid expression")
@@ -183,7 +203,18 @@ class ExpressionsEvaluator:
                             token_stack_type = literal_type
 
                         token_stack.append(value)
-                else:
+                elif (lexeme_type != False):
+                    
+                    #declaring int no initial value
+                    if (lexeme_type == "DECLARE_INT" or lexeme_type == "DECLARE_STR"):
+                        data_type = "int" if lexeme_type == "DECLARE_INT" else "str"
+                        variable_name = token_stack.pop()
+                        value = ""
+
+                        self.store_variable(data_type, variable_name, value)
+                        
+                        print("self.global_variables ======")
+                        print(self.global_variables)
                     # mean
                     if (lexeme_type == "ADV2_OP"):
                         result = self.calculate_mean(token_stack)
@@ -210,6 +241,8 @@ class ExpressionsEvaluator:
                         if (value == "PRINTLN"):
                             new_token = token_stack.pop() + "\n"
                             token_stack.append(new_token)
+                elif (is_identifier == True):
+                    token_stack.append(value)
         
         return token_stack.pop() if should_display == True else None
 
@@ -304,6 +337,11 @@ class Interpreter:
     # Keywords and reserved words are listed here.
     # ASCII printable characters will be checked through ord() 
     def __init__(self):
+        self.global_variables = {
+            "int": {},
+            "str": {}
+        }
+
         self.error_messages = {
             "INVALID_FILE": "Invalid File",
             "FILE_EMPTY": "File is empty",
@@ -363,9 +401,10 @@ class Interpreter:
                     is_valid_program = False
                 else:
                     tokenGenerator = TokenGenerator()
-                    tokens = tokenGenerator.execute(line) # BUGGY ang pag parse sa string ;(
+                    tokens = tokenGenerator.execute(line)
+                    # BUGGY ang pag parse sa string ;(
                     
-                    evaluator = ExpressionsEvaluator(tokens, count)
+                    evaluator = ExpressionsEvaluator(tokens, count, self.global_variables)
                     result = evaluator.execute()
                     output_list.append(result)
         
