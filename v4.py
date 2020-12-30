@@ -143,8 +143,8 @@ class ExpressionsEvaluator:
     
     def throw_error(self, message):
         line = " ".join(self.tokens)
-        print("{} at Line number [{}]".format(message, self.line_num))
-        print("{}".format(line))
+        print("\n{} at Line number [{}]".format(message, self.line_num))
+        print("{}\n\n".format(line))
 
         raise Exception(message)
     
@@ -153,6 +153,7 @@ class ExpressionsEvaluator:
         
         self.push_tokens(self.tokens)
         token_stack = []
+        token_stack_type = ""      # if int and str values are detected in a line, no bueno in INTERPOL
 
         last_item = self.peek_token(len(self.expr_stack) - 1)
 
@@ -166,11 +167,22 @@ class ExpressionsEvaluator:
 
                 # operations
                 if (literal_type == "int"):
-                    token_stack.append(value)
+                    if (len(token_stack) > 0 and token_stack_type == "str"):
+                        self.throw_error("Invalid arithmetic operation")
+                    else:
+                        if (len(token_stack) == 0):
+                            token_stack_type = literal_type
+                        
+                        token_stack.append(value)
 
                 elif (literal_type == "str"):
-                    # do something here
-                    pass
+                    if (len(token_stack) > 0 and token_stack_type == "int"):
+                        self.throw_error("Invalid expression")
+                    else:
+                        if (len(token_stack) == 0):
+                            token_stack_type = literal_type
+
+                        token_stack.append(value)
                 else:
                     # mean
                     if (lexeme_type == "ADV2_OP"):
@@ -276,9 +288,12 @@ class TokenGenerator:
 
         # remove comments first, then group the parentheses
         new_tokens = self.filter_comments(tokens)
-
-        if (len(new_tokens) > 1):
-            new_tokens = self.group_parentheses(new_tokens)
+        
+        #
+        #   TODO: BUGGY GROUPING OF STRINGS!!!!!!
+        #
+        # if (len(new_tokens) > 1):
+        #     new_tokens = self.group_parentheses(new_tokens)
 
         return new_tokens
     
@@ -286,65 +301,76 @@ class TokenGenerator:
 #   Main class for the program
 #
 class Interpreter:
-  # Keywords and reserved words are listed here.
-  # ASCII printable characters will be checked through ord() 
-  def __init__(self):
-    self.error_messages = {
-      "INVALID_FILE": "Invalid File",
-      "FILE_EMPTY": "File is empty",
-      "FILE_NOT_FOUND": "File not found"
-    }
+    # Keywords and reserved words are listed here.
+    # ASCII printable characters will be checked through ord() 
+    def __init__(self):
+        self.error_messages = {
+            "INVALID_FILE": "Invalid File",
+            "FILE_EMPTY": "File is empty",
+            "FILE_NOT_FOUND": "File not found"
+        }
 
-  # Checks for file-related errors
-  def validate_file(self, filename):
-    proceed = True
+    # Checks for file-related errors
+    def validate_file(self, filename):
+        proceed = True
+        error_message = ""
 
-    try:
-      if (filename.find(".ipol") == -1):                    # If file is invalid - does not end in .ipol
-        print(self.error_messages["INVALID_FILE"])
-        proceed = False
-      elif (os.path.exists(filename) == False):             # If file does not exist - size of the file in bytes is 0
-        print(self.error_messages["FILE_NOT_FOUND"])
-        proceed = False
-      elif (os.stat(filename).st_size == 0):                # If file is empty
-        print(self.error_messages["FILE_EMPTY"])
-        proceed = False
-    except FileNotFoundError:
-      pass
-
-    return proceed
-
-  # Runs the program and asks for a file input to evalute
-  def execute(self):
-    is_valid_program = True
-    filename = ""
-    count = 0
-    output_list = []
-
-    filename = input("Enter INTERPOL file: ")
-    is_valid_program = self.validate_file(filename)
-
-    with open(filename, "r") as f:
-        for line in f:
-            count += 1
+        try:
+            if (filename.find(".ipol") == -1):                    # If file is invalid - does not end in .ipol
+                error_message = self.error_messages["INVALID_FILE"]
+                proceed = False
+            elif (os.path.exists(filename) == False):             # If file does not exist - size of the file in bytes is 0
+                error_message = self.error_messages["FILE_NOT_FOUND"]
+                proceed = False
+            elif (os.stat(filename).st_size == 0):                # If file is empty
+                error_message = self.error_messages["FILE_EMPTY"]
+                proceed = False
             
-            if (count == 1 and line != "BEGIN"):
-                is_valid_program = False
-            else:
-                tokenGenerator = TokenGenerator()
-                tokens = tokenGenerator.execute(line)
+            if (proceed == False):
+                print(error_message + "\n")
+                raise(error_message)
+        except FileNotFoundError:
+            pass
+
+        return True
+
+    def display_output(self, output_list):
+        print("----------------  OUTPUT START  ---------------->")
+        output = list(filter(None, output_list))
+        output = "".join(output)
+        print(output)
+        print("<----------------- OUTPUT END -------------------")
+
+    # Runs the program and asks for a file input to evalute
+    def execute(self):
+        filename = ""
+        count = 0
+        output_list = []
+
+        print("========  INTERPOL INTERPRETER STARTED   ========\n")
+
+        #
+        #   @TODO: Add runtime errors
+        #
+        filename = input("Enter INTERPOL file: ")
+        is_valid_program = self.validate_file(filename)
+
+        with open(filename, "r") as f:
+            for line in f:
+                count += 1
                 
-                evaluator = ExpressionsEvaluator(tokens, count)
-                result = evaluator.execute()
-                output_list.append(result)
-
-    output = list(filter(None, output_list))
-    output = "".join(output)
-    print(output)
-    # for item in output_list:
-    #     if (item != None):
-    #         print(item.replace('"', ''))
-
+                if (count == 1 and line != "BEGIN"):
+                    is_valid_program = False
+                else:
+                    tokenGenerator = TokenGenerator()
+                    tokens = tokenGenerator.execute(line) # BUGGY ang pag parse sa string ;(
+                    
+                    evaluator = ExpressionsEvaluator(tokens, count)
+                    result = evaluator.execute()
+                    output_list.append(result)
+        
+        print("\n================ INTERPOL OUTPUT ================\n")
+        self.display_output(output_list)
 
 # Starts the program
 interpreter = Interpreter()
