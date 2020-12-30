@@ -88,9 +88,6 @@ class ExpressionsEvaluator:
                 token_list.append(token)
         
         self.expr_stack = token_list
-    
-    def push_token(self, token):
-        self.expr_stack.append(token)
 
     def peek_token(self, index):
         return self.expr_stack[index]
@@ -136,6 +133,13 @@ class ExpressionsEvaluator:
             amount += int(item)
             
         return int(amount / len(tokens))
+
+    def calculate_exponents(self, val1, val2, op):
+        if (op == "RAISE"):
+            return val1 ** val2 
+        
+        if (op == "ROOT"):
+            return int(val2 ** (1/val1))
     
     def throw_error(self, message):
         line = " ".join(self.tokens)
@@ -159,7 +163,7 @@ class ExpressionsEvaluator:
                 value = self.pop_token()
                 literal_type = self.validate_literal(value)
                 lexeme_type = self.validate_lexeme(value)
-                print(value, lexeme_type)
+
                 # operations
                 if (literal_type == "int"):
                     token_stack.append(value)
@@ -173,7 +177,14 @@ class ExpressionsEvaluator:
                         result = self.calculate_mean(token_stack)
                         token_stack.clear()
                         token_stack.append(str(result))
-                        
+                    
+                    # dealing with exponents
+                    if (lexeme_type == "ADV1_OP"):
+                        val_1 = token_stack.pop()
+                        val_2 = token_stack.pop()
+                        result = self.calculate_exponents(int(val_1), int(val_2), value)
+                        token_stack.append(str(result))
+                    
                     # basic operations
                     if (lexeme_type == "BASIC_OP"):
                         val_1 = token_stack.pop()
@@ -185,7 +196,6 @@ class ExpressionsEvaluator:
                         should_display = True
                         
                         if (value == "PRINTLN"):
-                            print(token_stack)
                             new_token = token_stack.pop() + "\n"
                             token_stack.append(new_token)
         
@@ -326,8 +336,6 @@ class Interpreter:
                 
                 evaluator = ExpressionsEvaluator(tokens, count)
                 result = evaluator.execute()
-                print("result ======")
-                print(result)
                 output_list.append(result)
 
     output = list(filter(None, output_list))
