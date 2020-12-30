@@ -87,42 +87,47 @@ class ExpressionsEvaluator:
             if (lexeme_value != False or literal_value != False):
                 token_list.append(token)
         
-        return token_list
+        self.expr_stack = token_list
     
+    def push_token(self, token):
+        self.expr_stack.append(token)
+
+    def peek_token(self, index):
+        return self.expr_stack[index]
+    
+    def pop_token(self):
+        return str(self.expr_stack.pop())
     
     def calculate_basic_math(self, val1, val2, op):
         result = 0
 
-        if (self.validate_lexeme(op, "BASIC_OP") != False):
-            # adds num1 and num2
-            if (op == "ADD"):
-                result = val1 + val2
-            
-            # subtracts num2 from num1
-            if (op == "SUB"):
-                result = val1 - val2
-            
-            # multiplies num1 and num2
-            if (op == "MUL"):
-                result = val1 * val2
-            
-            # divides num1 by num2
-            if (op == "DIV"):
-                if (val2 == 0):
-                    result = "Error: Division by zero"
-                else:
-                    result = int(val1 / val2)
+        # adds num1 and num2
+        if (op == "ADD"):
+            result = val1 + val2
+        
+        # subtracts num2 from num1
+        if (op == "SUB"):
+            result = val1 - val2
+        
+        # multiplies num1 and num2
+        if (op == "MUL"):
+            result = val1 * val2
+        
+        # divides num1 by num2
+        if (op == "DIV"):
+            if (val2 == 0):
+                result = "Error: Division by zero"
+            else:
+                result = int(val1 / val2)
 
-            # gets the remainder of num1/num2
-            if (op == "MOD"):
-                if (val2 == 0):
-                    result = "Error: Division by zero"
-                else:
-                    result = int(val1 % val2)
+        # gets the remainder of num1/num2
+        if (op == "MOD"):
+            if (val2 == 0):
+                result = "Error: Division by zero"
+            else:
+                result = int(val1 % val2)
 
-            return result
-        else:
-            self.throw_error("Invalid syntax")
+        return result
     
     def throw_error(self, message):
         line = " ".join(self.tokens)
@@ -132,52 +137,46 @@ class ExpressionsEvaluator:
         raise Exception(message)
     
     def execute(self):
-        self.expr_stack = self.push_tokens(self.tokens)
         should_display = False
-        values = []
-        value_types = []
-        index = 0
         
-        last_item = self.expr_stack[len(self.expr_stack) - 1]
+        self.push_tokens(self.tokens)
+        token_stack = []
+
+        last_item = self.peek_token(len(self.expr_stack) - 1)
 
         if (self.validate_lexeme(last_item) == "MARKER"):
             self.expr_stack = []
         else:
             while len(self.expr_stack) > 1:
-                values.append(self.expr_stack.pop())
-                value_types.append(self.validate_literal(values[index]))
-        
-                # returns an error of val1 is an int BUT val2 is not
-                # CASE 1. MATHEMATICAL OPERATIONS ======
-                if (value_types[index] == "int"):
-                    index += 1
-                    values.append(self.expr_stack.pop())
-                    value_types.append(self.validate_literal(values[index]))
-                    literal_type = value_types[index]
+                value = self.pop_token()
+                literal_type = self.validate_literal(value)
+                lexeme_type = self.validate_lexeme(value)
+                
+                # operations
+                if (literal_type == "int"):
+                    token_stack.append(value)
 
-                    if (literal_type == "int"):
-                        method = self.expr_stack.pop()
-                        result = self.calculate_basic_math(int(values[index - 1]), int(values[index]), method)
-                        self.expr_stack.append(str(result))
-                    elif (literal_type == "str"):                           # error
-                        self.throw_error("Invalid expression")
-                    else:
-                        lexeme_type = self.validate_lexeme(values[index])
-
-                        if (lexeme_type == "OUTPUT"):
-                            should_display = True
-                            self.expr_stack.append(values[index - 1])
-                elif (value_types[index] == "str"):
-                    index += 1
-                    values.append(self.expr_stack.pop())
-                    value_types.append(self.validate_lexeme(values[index]))
-                    lexeme_type = value_types[index]
-
+                elif (literal_type == "str"):
+                    # do something here
+                    pass
+                else:
+                    if (lexeme_type == "BASIC_OP"):
+                        val_1 = token_stack.pop()
+                        val_2 = token_stack.pop()
+                        result = self.calculate_basic_math(int(val_1), int(val_2), value)
+                        token_stack.append(result)
+                        
                     if (lexeme_type == "OUTPUT"):
                         should_display = True
-                        self.expr_stack.append(values[index - 1])
-                
-        return self.expr_stack.pop() if should_display == True else None
+                        
+                        if (value == "PRINT"):
+                            new_token = value + self.pop_token()
+                            self.push_token(new_token)
+                        elif (value == "PRINTLN"):
+                            self.push_token(value)
+
+
+        return token_stack.pop() if should_display == True else None
 
                 
 #
