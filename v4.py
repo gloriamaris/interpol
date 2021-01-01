@@ -64,6 +64,8 @@ class ExpressionsEvaluator:
         return True if (self.check_ascii(token) and self.is_int(token)) else False
 
     def is_string(self, token): 
+        print("is string token")
+        print(token)
         return True if (token[0] == '"' and token[len(token) - 1] == '"' and self.check_ascii(token)) else False
     
     def check_ascii(self, token):
@@ -151,14 +153,27 @@ class ExpressionsEvaluator:
             if (key == variable_name):
                 self.throw_error("Duplicate variable declaration")
 
+    # store global variables
     def store_variable(self, data_type, variable_name, value):
-        if (len(self.global_variables["int"]) > 0):
-            self.check_globals_for_duplicate(variable_name, "int")
-        
-        if (len(self.global_variables["str"]) > 0):
-            self.check_globals_for_duplicate(variable_name, "str")
-        
-        self.global_variables[data_type][variable_name] = value
+        if (data_type == "hold"):
+            self.global_variables["hold"] = value
+        else:
+            if (len(self.global_variables["int"]) > 0):
+                self.check_globals_for_duplicate(variable_name, "int")
+            
+            if (len(self.global_variables["str"]) > 0):
+                self.check_globals_for_duplicate(variable_name, "str")
+            
+            self.global_variables[data_type][variable_name] = value
+            
+    def get_variable(self, data_type, variable_name):
+        return self.global_variables[data_type][variable_name]
+    
+    def get_hold_value(self):
+        hold_value = self.global_variables["hold"]
+        self.global_variables["hold"] = ""
+
+        return hold_value
     
     def throw_error(self, message):
         line = " ".join(self.tokens)
@@ -185,8 +200,7 @@ class ExpressionsEvaluator:
                 lexeme_type = self.validate_lexeme(value)
                 is_identifier = self.is_identifier(value)
 
-                print(literal_type, lexeme_type, is_identifier)
-                # operations
+                # processing literal values
                 if (literal_type == "int"):
                     if (len(token_stack) > 0 and token_stack_type == "str"):
                         self.throw_error("Invalid arithmetic operation")
@@ -203,14 +217,21 @@ class ExpressionsEvaluator:
                             token_stack_type = literal_type
 
                         token_stack.append(value)
+                # processing lexemes
                 elif (lexeme_type != False):
-                    
+                    #declaring with initial value
+                    if (lexeme_type == "DECLARE_CONN"):
+                        value = token_stack.pop()
+                        self.store_variable("hold", "", value)
+                        
                     #declaring int no initial value
                     if (lexeme_type == "DECLARE_INT" or lexeme_type == "DECLARE_STR"):
                         data_type = "int" if lexeme_type == "DECLARE_INT" else "str"
                         variable_name = token_stack.pop()
                         value = ""
-
+                        
+                        value = self.get_hold_value()
+                        
                         self.store_variable(data_type, variable_name, value)
                         
                         print("self.global_variables ======")
@@ -324,9 +345,11 @@ class TokenGenerator:
         
         #
         #   TODO: BUGGY GROUPING OF STRINGS!!!!!!
+        #   check for computations with:
+        #   string_val int_val
         #
-        # if (len(new_tokens) > 1):
-        #     new_tokens = self.group_parentheses(new_tokens)
+        if (len(new_tokens) > 1):
+            new_tokens = self.group_parentheses(new_tokens)
 
         return new_tokens
     
@@ -338,6 +361,7 @@ class Interpreter:
     # ASCII printable characters will be checked through ord() 
     def __init__(self):
         self.global_variables = {
+            "hold": "",
             "int": {},
             "str": {}
         }
