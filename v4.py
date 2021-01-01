@@ -150,6 +150,8 @@ class ExpressionsEvaluator:
         for key in self.global_variables[data_type]:
             if (key == variable_name):
                 return True
+            
+        return False
 
     # store global variables
     def store_variable(self, data_type, variable_name, value, should_replace = False):
@@ -169,9 +171,17 @@ class ExpressionsEvaluator:
                 self.throw_error("Duplicate variable declaration")
             
             self.global_variables[data_type][variable_name] = value
+            self.global_variables["last_declared"].clear()
+            self.global_variables["last_declared"][data_type] = variable_name
+
             
-    def get_variable(self, data_type, variable_name):
-        return self.global_variables[data_type][variable_name]
+    def get_variable(self, data_type = "", variable_name = ""):
+        if (data_type == ""):
+            exists_int = self.check_globals_for_duplicate(variable_name, "int")
+            data_type = "int" if exists_int == True else "str"
+
+        value = self.global_variables[data_type][variable_name] if data_type == "int" else self.global_variables[data_type][variable_name].replace('"', "")
+        return value
     
     def get_hold_value(self):
         hold_value = self.global_variables["hold"]
@@ -223,20 +233,31 @@ class ExpressionsEvaluator:
                         token_stack.append(value)
                 # processing lexemes
                 elif (lexeme_type != False):
-                    
-                    # when assign connector (IN) is detected, store the variable name to HOLD
-                    if (lexeme_type == "ASSIGN_CONN"):
-                        print(token_stack)
+                    # asking for user input
+                    if (lexeme_type == "INPUT"):
                         variable_name = token_stack.pop()
                         exists_int = self.check_globals_for_duplicate(variable_name, "int")
                         exists_str = self.check_globals_for_duplicate(variable_name, "str")
                         
-                        if (exists_int == False or exists_str == False):
+                        if (exists_int == False and exists_str == False):
+                            self.throw_error("Variable is not declared")
+                        else:
+                            data_type = "int" if lexeme_type == "DECLARE_INT" else "str"
+                            should_replace = True
+                            value = input()
+                            
+                            self.store_variable(data_type, variable_name, value, should_replace)
+                    
+                    # when assign connector (IN) is detected, store the variable name to HOLD
+                    if (lexeme_type == "ASSIGN_CONN"):
+                        variable_name = token_stack.pop()
+                        exists_int = self.check_globals_for_duplicate(variable_name, "int")
+                        exists_str = self.check_globals_for_duplicate(variable_name, "str")
+                        
+                        if (exists_int == False and exists_str == False):
                             self.throw_error("Variable is not declared")
                         else:
                             self.store_variable("hold", "", variable_name)
-                            print("store variables")
-                            print(self.global_variables["hold"])
     
                     # assigning value to a variable
                     if (lexeme_type == "ASSIGN"):
@@ -246,9 +267,6 @@ class ExpressionsEvaluator:
                         # wrong syntax or someth
                         if (variable_name == ""):
                             self.throw_error("Invalid syntax")
-            
-                        print("value, variable_name")
-                        print(value, variable_name)
 
                         # only checks if type is int. INTERPOL only has 2 data types anyway
                         exists_int = self.check_globals_for_duplicate(variable_name, "int")
@@ -256,8 +274,6 @@ class ExpressionsEvaluator:
                         should_replace = True
 
                         self.store_variable(data_type, variable_name, value, should_replace)
-                        print("self.global_variables ======")
-                        print(self.global_variables)
 
                     #declaring with initial value
                     if (lexeme_type == "DECLARE_CONN"):
@@ -273,9 +289,7 @@ class ExpressionsEvaluator:
                         value = self.get_hold_value()
                         
                         self.store_variable(data_type, variable_name, value)
-                        
-                        print("self.global_variables ======")
-                        print(self.global_variables)
+
                     # mean
                     if (lexeme_type == "ADV2_OP"):
                         result = self.calculate_mean(token_stack)
@@ -299,13 +313,22 @@ class ExpressionsEvaluator:
                     if (lexeme_type == "OUTPUT"):
                         should_display = True
                         
+                        new_token = token_stack.pop()
+                        
+                        if (self.is_identifier(new_token) == True):
+                            new_token = self.get_variable("", new_token)
+
+                        token_stack.append(new_token)
+
                         if (value == "PRINTLN"):
-                            new_token = token_stack.pop() + "\n"
-                            token_stack.append(new_token)
+                            print(new_token)
+                        else:
+                            print(new_token, end = "")
+                        
                 elif (is_identifier == True):
                     token_stack.append(value)
         
-        return token_stack.pop() if should_display == True else None
+        # return token_stack.pop() if should_display == True else None
 
                 
 #
@@ -401,6 +424,7 @@ class Interpreter:
     # ASCII printable characters will be checked through ord() 
     def __init__(self):
         self.global_variables = {
+            "last_declared": {},
             "hold": "",
             "int": {},
             "str": {}
@@ -437,17 +461,14 @@ class Interpreter:
         return True
 
     def display_output(self, output_list):
-        print("----------------  OUTPUT START  ---------------->")
         output = list(filter(None, output_list))
         output = "".join(output)
         print(output)
-        print("<----------------- OUTPUT END -------------------")
 
     # Runs the program and asks for a file input to evalute
     def execute(self):
         filename = ""
         count = 0
-        output_list = []
 
         print("========  INTERPOL INTERPRETER STARTED   ========\n")
 
@@ -457,10 +478,16 @@ class Interpreter:
         filename = input("Enter INTERPOL file: ")
         is_valid_program = self.validate_file(filename)
 
+        print("\n================ INTERPOL OUTPUT ================\n")
+
+        print("----------------  OUTPUT START  ---------------->\n")
         with open(filename, "r") as f:
             for line in f:
                 count += 1
                 
+                #
+                #   TODO: Add error trap here if the program does not start with BEGIN
+                #
                 if (count == 1 and line != "BEGIN"):
                     is_valid_program = False
                 else:
@@ -469,11 +496,9 @@ class Interpreter:
                     # BUGGY ang pag parse sa string ;(
                     
                     evaluator = ExpressionsEvaluator(tokens, count, self.global_variables)
-                    result = evaluator.execute()
-                    output_list.append(result)
+                    evaluator.execute()
         
-        print("\n================ INTERPOL OUTPUT ================\n")
-        self.display_output(output_list)
+        print("\n\n<----------------- OUTPUT END -------------------")
 
 # Starts the program
 interpreter = Interpreter()
