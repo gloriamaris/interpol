@@ -63,9 +63,7 @@ class ExpressionsEvaluator:
     def is_number(self, token):
         return True if (self.check_ascii(token) and self.is_int(token)) else False
 
-    def is_string(self, token): 
-        print("is string token")
-        print(token)
+    def is_string(self, token):
         return True if (token[0] == '"' and token[len(token) - 1] == '"' and self.check_ascii(token)) else False
     
     def check_ascii(self, token):
@@ -151,18 +149,24 @@ class ExpressionsEvaluator:
     def check_globals_for_duplicate(self, variable_name, data_type):
         for key in self.global_variables[data_type]:
             if (key == variable_name):
-                self.throw_error("Duplicate variable declaration")
+                return True
 
     # store global variables
-    def store_variable(self, data_type, variable_name, value):
+    def store_variable(self, data_type, variable_name, value, should_replace = False):
+        exists_int = False
+        exists_str = False
+
         if (data_type == "hold"):
             self.global_variables["hold"] = value
         else:
             if (len(self.global_variables["int"]) > 0):
-                self.check_globals_for_duplicate(variable_name, "int")
+                exists_int = self.check_globals_for_duplicate(variable_name, "int")
             
             if (len(self.global_variables["str"]) > 0):
-                self.check_globals_for_duplicate(variable_name, "str")
+                exists_str = self.check_globals_for_duplicate(variable_name, "str")
+            
+            if ((exists_int == True or exists_str == True) and should_replace == False):
+                self.throw_error("Duplicate variable declaration")
             
             self.global_variables[data_type][variable_name] = value
             
@@ -219,6 +223,42 @@ class ExpressionsEvaluator:
                         token_stack.append(value)
                 # processing lexemes
                 elif (lexeme_type != False):
+                    
+                    # when assign connector (IN) is detected, store the variable name to HOLD
+                    if (lexeme_type == "ASSIGN_CONN"):
+                        print(token_stack)
+                        variable_name = token_stack.pop()
+                        exists_int = self.check_globals_for_duplicate(variable_name, "int")
+                        exists_str = self.check_globals_for_duplicate(variable_name, "str")
+                        
+                        if (exists_int == False or exists_str == False):
+                            self.throw_error("Variable is not declared")
+                        else:
+                            self.store_variable("hold", "", variable_name)
+                            print("store variables")
+                            print(self.global_variables["hold"])
+    
+                    # assigning value to a variable
+                    if (lexeme_type == "ASSIGN"):
+                        value = token_stack.pop()
+                        variable_name = self.get_hold_value()
+                        
+                        # wrong syntax or someth
+                        if (variable_name == ""):
+                            self.throw_error("Invalid syntax")
+            
+                        print("value, variable_name")
+                        print(value, variable_name)
+
+                        # only checks if type is int. INTERPOL only has 2 data types anyway
+                        exists_int = self.check_globals_for_duplicate(variable_name, "int")
+                        data_type = "int" if exists_int == True else "str"
+                        should_replace = True
+
+                        self.store_variable(data_type, variable_name, value, should_replace)
+                        print("self.global_variables ======")
+                        print(self.global_variables)
+
                     #declaring with initial value
                     if (lexeme_type == "DECLARE_CONN"):
                         value = token_stack.pop()
