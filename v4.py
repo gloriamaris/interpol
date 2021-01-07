@@ -1,4 +1,4 @@
-import os, re
+import os, re, math
 
 
 #
@@ -138,6 +138,13 @@ class ExpressionsEvaluator:
             amount += int(item)
             
         return int(amount / len(tokens))
+    
+    def calculate_dist(self, x1, y1, x2, y2):
+        x = int(x2 - x1)
+        y = int(y2 - y1)
+
+        distance = math.hypot(x, y)
+        return int(distance)
 
     def calculate_exponents(self, val1, val2, op):
         if (op == "RAISE"):
@@ -290,6 +297,21 @@ class ExpressionsEvaluator:
                         
                         self.store_variable(data_type, variable_name, value)
 
+                    # distance between two points
+                    if (lexeme_type == "ADV3_OP"):
+                        y2 = int(token_stack.pop())
+                        x2 = int(token_stack.pop())
+                        y1 = int(token_stack.pop())
+                        x1 = int(token_stack.pop())
+
+                        result = self.calculate_dist(x1, y1, x2, y2)
+                        token_stack.append(str(result))
+                    
+                    # detecting the distance connector lexeme AND
+                    # and not sure what to do with it
+                    if (lexeme_type == "ADV3_OP_CONN"):
+                        pass
+                    
                     # mean
                     if (lexeme_type == "ADV2_OP"):
                         result = self.calculate_mean(token_stack)
@@ -314,8 +336,8 @@ class ExpressionsEvaluator:
                         should_display = True
                         
                         new_token = token_stack.pop()
-                        
-                        if (self.is_identifier(new_token) == True):
+
+                        if (self.is_number == False and  self.is_identifier(new_token) == True):
                             new_token = self.get_variable("", new_token)
 
                         token_stack.append(new_token)
