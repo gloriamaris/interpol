@@ -12,6 +12,7 @@ class ExpressionsEvaluator:
         self.line_num = line_num
         self.global_variables = global_variables
         self.expr_stack = []
+        self.tokens_table = []
 
         # List of error messages
         self.error_messages = {
@@ -203,154 +204,183 @@ class ExpressionsEvaluator:
 
         raise Exception(message)
     
+    def push_to_tokens_table(self, token_type, lexeme_value):
+        row = str(self.line_num) + "\t\t" + str(token_type) + str(lexeme_value)
+        self.tokens_table.append(row)
+    
     def execute(self):
-        should_display = False
-        
         self.push_tokens(self.tokens)
         token_stack = []
         token_stack_type = ""      # if int and str values are detected in a line, no bueno in INTERPOL
-
-        last_item = self.peek_token(len(self.expr_stack) - 1)
-
-        if (self.validate_lexeme(last_item) == "MARKER"):
-            self.expr_stack = []
-        else:
-            while len(self.expr_stack) >= 1:
-                value = self.pop_token()
-                literal_type = self.validate_literal(value)
-                lexeme_type = self.validate_lexeme(value)
-                is_identifier = self.is_identifier(value)
-
-                # processing literal values
-                if (literal_type == "int"):
-                    if (len(token_stack) > 0 and token_stack_type == "str"):
-                        self.throw_error("Invalid arithmetic operation")
-                    else:
-                        if (len(token_stack) == 0):
-                            token_stack_type = literal_type
-                        
-                        token_stack.append(value)
-                elif (literal_type == "str"):
-                    if (len(token_stack) > 0 and token_stack_type == "int"):
-                        self.throw_error("Invalid expression")
-                    else:
-                        if (len(token_stack) == 0):
-                            token_stack_type = literal_type
-
-                        token_stack.append(value)
-                # processing lexemes
-                elif (lexeme_type != False):
-                    # asking for user input
-                    if (lexeme_type == "INPUT"):
-                        variable_name = token_stack.pop()
-                        exists_int = self.check_globals_for_duplicate(variable_name, "int")
-                        exists_str = self.check_globals_for_duplicate(variable_name, "str")
-                        
-                        if (exists_int == False and exists_str == False):
-                            self.throw_error("Variable is not declared")
-                        else:
-                            data_type = "int" if lexeme_type == "DECLARE_INT" else "str"
-                            should_replace = True
-                            value = input()
-                            
-                            self.store_variable(data_type, variable_name, value, should_replace)
-                    
-                    # when assign connector (IN) is detected, store the variable name to HOLD
-                    if (lexeme_type == "ASSIGN_CONN"):
-                        variable_name = token_stack.pop()
-                        exists_int = self.check_globals_for_duplicate(variable_name, "int")
-                        exists_str = self.check_globals_for_duplicate(variable_name, "str")
-                        
-                        if (exists_int == False and exists_str == False):
-                            self.throw_error("Variable is not declared")
-                        else:
-                            self.store_variable("hold", "", variable_name)
-    
-                    # assigning value to a variable
-                    if (lexeme_type == "ASSIGN"):
-                        value = token_stack.pop()
-                        variable_name = self.get_hold_value()
-                        
-                        # wrong syntax or someth
-                        if (variable_name == ""):
-                            self.throw_error("Invalid syntax")
-
-                        # only checks if type is int. INTERPOL only has 2 data types anyway
-                        exists_int = self.check_globals_for_duplicate(variable_name, "int")
-                        data_type = "int" if exists_int == True else "str"
-                        should_replace = True
-
-                        self.store_variable(data_type, variable_name, value, should_replace)
-
-                    #declaring with initial value
-                    if (lexeme_type == "DECLARE_CONN"):
-                        value = token_stack.pop()
-                        self.store_variable("hold", "", value)
-                        
-                    #declaring int no initial value
-                    if (lexeme_type == "DECLARE_INT" or lexeme_type == "DECLARE_STR"):
-                        data_type = "int" if lexeme_type == "DECLARE_INT" else "str"
-                        variable_name = token_stack.pop()
-                        value = ""
-                        
-                        value = self.get_hold_value()
-                        
-                        self.store_variable(data_type, variable_name, value)
-
-                    # distance between two points
-                    if (lexeme_type == "ADV3_OP"):
-                        y2 = int(token_stack.pop())
-                        x2 = int(token_stack.pop())
-                        y1 = int(token_stack.pop())
-                        x1 = int(token_stack.pop())
-
-                        result = self.calculate_dist(x1, y1, x2, y2)
-                        token_stack.append(str(result))
-                    
-                    # detecting the distance connector lexeme AND
-                    # and not sure what to do with it
-                    if (lexeme_type == "ADV3_OP_CONN"):
-                        pass
-                    
-                    # mean
-                    if (lexeme_type == "ADV2_OP"):
-                        result = self.calculate_mean(token_stack)
-                        token_stack.clear()
-                        token_stack.append(str(result))
-                    
-                    # dealing with exponents
-                    if (lexeme_type == "ADV1_OP"):
-                        val_1 = token_stack.pop()
-                        val_2 = token_stack.pop()
-                        result = self.calculate_exponents(int(val_1), int(val_2), value)
-                        token_stack.append(str(result))
-                    
-                    # basic operations
-                    if (lexeme_type == "BASIC_OP"):
-                        val_1 = token_stack.pop()
-                        val_2 = token_stack.pop()
-                        result = self.calculate_basic_math(int(val_1), int(val_2), value)
-                        token_stack.append(str(result))
-                        
-                    if (lexeme_type == "OUTPUT"):
-                        should_display = True
-                        
-                        new_token = token_stack.pop()
-
-                        if (self.is_number == False and  self.is_identifier(new_token) == True):
-                            new_token = self.get_variable("", new_token)
-
-                        token_stack.append(new_token)
-
-                        if (value == "PRINTLN"):
-                            print(new_token)
-                        else:
-                            print(new_token, end = "")
-                        
-                elif (is_identifier == True):
-                    token_stack.append(value)
         
-        # return token_stack.pop() if should_display == True else None
+        if (len(self.tokens) == 0):
+            self.push_to_tokens_table("END_OF_STATEMENT\t\t", "EOS")
+
+        else:
+        
+            last_item = self.peek_token(len(self.expr_stack) - 1)
+            
+            if (self.validate_lexeme(last_item) == "MARKER"):
+                self.expr_stack = []
+            else:
+                while len(self.expr_stack) >= 1:
+                    value = self.pop_token()
+                    literal_type = self.validate_literal(value)
+                    lexeme_type = self.validate_lexeme(value)
+                    is_identifier = self.is_identifier(value)
+
+                    # processing literal values
+                    if (literal_type == "int"):
+                        if (len(token_stack) > 0 and token_stack_type == "str"):
+                            self.throw_error("Invalid arithmetic operation")
+                        else:
+                            if (len(token_stack) == 0):
+                                token_stack_type = literal_type
+                            
+                            token_stack.append(value)
+                            self.push_to_tokens_table("NUMBER\t\t\t\t", value)
+                    elif (literal_type == "str"):
+                        if (len(token_stack) > 0 and token_stack_type == "int"):
+                            self.throw_error("Invalid expression")
+                        else:
+                            if (len(token_stack) == 0):
+                                token_stack_type = literal_type
+
+                            token_stack.append(value)
+                            self.push_to_tokens_table("STRING\t\t\t\t", value)
+                    # processing lexemes
+                    elif (lexeme_type != False):
+                        # asking for user input
+                        if (lexeme_type == "INPUT"):
+                            variable_name = token_stack.pop()
+                            exists_int = self.check_globals_for_duplicate(variable_name, "int")
+                            exists_str = self.check_globals_for_duplicate(variable_name, "str")
+                            
+                            if (exists_int == False and exists_str == False):
+                                self.throw_error("Variable is not declared")
+                            else:
+                                data_type = "int" if lexeme_type == "DECLARE_INT" else "str"
+                                should_replace = True
+                                value = input()
+                                
+                                self.store_variable(data_type, variable_name, value, should_replace)
+                                self.push_to_tokens_table("INPUT\t\t\t\t", value)
+                                self.push_to_tokens_table("IDENTIFIER\t\t\t\t", variable_name)
+                            
+                        # when assign connector (IN) is detected, store the variable name to HOLD
+                        if (lexeme_type == "ASSIGN_CONN"):
+                            variable_name = token_stack.pop()
+                            exists_int = self.check_globals_for_duplicate(variable_name, "int")
+                            exists_str = self.check_globals_for_duplicate(variable_name, "str")
+                            
+                            if (exists_int == False and exists_str == False):
+                                self.throw_error("Variable is not declared")
+                            else:
+                                self.store_variable("hold", "", variable_name)
+                                self.push_to_tokens_table("ASSIGN_VAR_KEY\t\t", value)
+        
+                        # assigning value to a variable
+                        if (lexeme_type == "ASSIGN"):
+                            value = token_stack.pop()
+                            variable_name = self.get_hold_value()
+                            
+                            # wrong syntax or someth
+                            if (variable_name == ""):
+                                self.throw_error("Invalid syntax")
+
+                            # only checks if type is int. INTERPOL only has 2 data types anyway
+                            exists_int = self.check_globals_for_duplicate(variable_name, "int")
+                            data_type = "int" if exists_int == True else "str"
+                            should_replace = True
+
+                            self.store_variable(data_type, variable_name, value, should_replace)
+                            self.push_to_tokens_table("ASSIGN_KEY\t\t\t\t", value)
+
+                        #declaring with initial value
+                        if (lexeme_type == "DECLARE_CONN"):
+                            value = token_stack.pop()
+                            self.store_variable("hold", "", value)
+                            self.push_to_tokens_table("DECLARATION_ASSIGN_WITH_KEY\t\t", value)
+                            
+                        #declaring int no initial value
+                        if (lexeme_type == "DECLARE_INT" or lexeme_type == "DECLARE_STR"):
+                            data_type = "int" if lexeme_type == "DECLARE_INT" else "str"
+                            variable_name = token_stack.pop()
+                            value = ""
+                            
+                            value = self.get_hold_value()
+                            
+                            self.store_variable(data_type, variable_name, value)
+                            key = "DECLARATION_INT\t\t" if lexeme_type == "DECLARE_INT" else "DECLARATION_STRING\t\t"
+                            self.push_to_tokens_table(key, value)
+
+                        # distance between two points
+                        if (lexeme_type == "ADV3_OP"):
+                            y2 = int(token_stack.pop())
+                            x2 = int(token_stack.pop())
+                            y1 = int(token_stack.pop())
+                            x1 = int(token_stack.pop())
+
+                            result = self.calculate_dist(x1, y1, x2, y2)
+                            token_stack.append(str(result))
+                            self.push_to_tokens_table("ADVANCED_OPERATOR_DIST\t\t", value)
+                        
+                        # detecting the distance connector lexeme AND
+                        # and not sure what to do with it
+                        if (lexeme_type == "ADV3_OP_CONN"):
+                            self.push_to_tokens_table("DISTANCE_OPERATOR\t\t", value)
+                            pass
+                        
+                        # mean
+                        if (lexeme_type == "ADV2_OP"):
+                            result = self.calculate_mean(token_stack)
+                            token_stack.clear()
+                            token_stack.append(str(result))
+                            self.push_to_tokens_table("ADVANCED_OPERATOR_AVE\t\t", value)
+                        
+                        # dealing with exponents
+                        if (lexeme_type == "ADV1_OP"):
+                            val_1 = token_stack.pop()
+                            val_2 = token_stack.pop()
+                            result = self.calculate_exponents(int(val_1), int(val_2), value)
+                            token_stack.append(str(result))
+                            
+                            key = "ADVANCED_OPERATOR_EXP\t\t" if value == "RAISE" else "ADVANCED_OPERATOR_ROOT\t\t"
+                            self.push_to_tokens_table(key, value)
+                        
+                        # basic operations
+                        if (lexeme_type == "BASIC_OP"):
+                            val_1 = token_stack.pop()
+                            val_2 = token_stack.pop()
+                            result = self.calculate_basic_math(int(val_1), int(val_2), value)
+                            token_stack.append(str(result))
+                            
+                            self.push_to_tokens_table("BASIC_OPERATOR" + value + "\t\t", value)
+                            
+                        if (lexeme_type == "OUTPUT"):
+                            should_display = True
+                            
+                            new_token = token_stack.pop()
+
+                            if (self.is_number == False and  self.is_identifier(new_token) == True):
+                                new_token = self.get_variable("", new_token)
+
+                            token_stack.append(new_token)
+
+                            if (value == "PRINTLN"):
+                                self.push_to_tokens_table("OUTPUT_WITH_LINE\t\t", value)
+                                print(new_token)
+                            else:
+                                self.push_to_tokens_table("OUTPUT\t\t\t\t", value)
+                                print(new_token, end = "")
+                            
+                    elif (is_identifier == True):
+                        token_stack.append(value)
+                        self.push_to_tokens_table("IDENTIFIER\t", value)
+                        
+                    self.push_to_tokens_table("END_OF_STATEMENT\t\t", "EOS")
+        
+        return self.tokens_table
 
                 
 #
@@ -451,6 +481,8 @@ class Interpreter:
             "int": {},
             "str": {}
         }
+        
+        self.lexemes_tokens_list = []
 
         self.error_messages = {
             "INVALID_FILE": "Invalid File",
@@ -491,6 +523,7 @@ class Interpreter:
     def execute(self):
         filename = ""
         count = 0
+        accumulated_tokens = []
 
         print("========  INTERPOL INTERPRETER STARTED   ========\n")
 
@@ -515,12 +548,35 @@ class Interpreter:
                 else:
                     tokenGenerator = TokenGenerator()
                     tokens = tokenGenerator.execute(line)
+
                     # BUGGY ang pag parse sa string ;(
                     
                     evaluator = ExpressionsEvaluator(tokens, count, self.global_variables)
-                    evaluator.execute()
+                    tokens = evaluator.execute()
+                    accumulated_tokens.append(tokens)
+            
+        print("\n<----------------- OUTPUT END -------------------")
+        print("\n\n========= INTERPOL LEXEMES/TOKENS TABLE =========")
+        print("\n\nLINE NO.\tTOKENS\t\t\t\tLEXEMES")
         
-        print("\n\n<----------------- OUTPUT END -------------------")
+        print("1\t\tPROGRAM_BEGIN\t\t\tBEGIN")
+        print("1\t\tEND_OF_STATEMENT\t\tEOS")
+
+        line_count = 0
+
+        for item in accumulated_tokens:
+            index = 0
+
+            while index < len(item):
+                print(item[index])
+                tokens = item[index].split("\t")
+                line_count = int(tokens[0])
+                index += 1
+
+        line_count += 1
+        print(str(line_count) + "\t\tPROGRAM_END\t\t\tEND")
+        line_count += 1
+        print(str(line_count) + "\t\tEND_OF_FILE\t\t\tEOF")
 
 # Starts the program
 interpreter = Interpreter()
