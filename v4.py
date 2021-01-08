@@ -268,7 +268,7 @@ class ExpressionsEvaluator:
                                 self.push_to_tokens_table("IDENTIFIER\t\t\t", variable_name)
                             
                         # when assign connector (IN) is detected, store the variable name to HOLD
-                        if (lexeme_type == "ASSIGN_CONN"):
+                        if (lexeme_type == "ASSIGN_CONNt"):
                             variable_name = token_stack.pop()
                             exists_int = self.check_globals_for_duplicate(variable_name, "int")
                             exists_str = self.check_globals_for_duplicate(variable_name, "str")
@@ -300,7 +300,7 @@ class ExpressionsEvaluator:
                         if (lexeme_type == "DECLARE_CONN"):
                             value = token_stack.pop()
                             self.store_variable("hold", "", value)
-                            self.push_to_tokens_table("DECLARATION_ASSIGN_WITH_KEY\t\t", value)
+                            self.push_to_tokens_table("DECLARATION_ASSIGN_WITH_KEY\t", value)
                             
                         #declaring int no initial value
                         if (lexeme_type == "DECLARE_INT" or lexeme_type == "DECLARE_STR"):
@@ -311,7 +311,7 @@ class ExpressionsEvaluator:
                             value = self.get_hold_value()
                             
                             self.store_variable(data_type, variable_name, value)
-                            key = "DECLARATION_INT\t\t" if lexeme_type == "DECLARE_INT" else "DECLARATION_STRING\t\t"
+                            key = "DECLARATION_INT\t\t\t" if lexeme_type == "DECLARE_INT" else "DECLARATION_STRING\t\t"
                             self.push_to_tokens_table(key, value)
 
                         # distance between two points
@@ -377,7 +377,7 @@ class ExpressionsEvaluator:
                             
                     elif (is_identifier == True):
                         token_stack.append(value)
-                        self.push_to_tokens_table("IDENTIFIER\t", value)
+                        self.push_to_tokens_table("IDENTIFIER\t\t\t", value)
                         
                     self.push_to_tokens_table("END_OF_STATEMENT\t\t", "EOS")
         
