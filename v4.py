@@ -265,7 +265,7 @@ class ExpressionsEvaluator:
                                 
                                 self.store_variable(data_type, variable_name, value, should_replace)
                                 self.push_to_tokens_table("INPUT\t\t\t\t", value)
-                                self.push_to_tokens_table("IDENTIFIER\t\t\t\t", variable_name)
+                                self.push_to_tokens_table("IDENTIFIER\t\t\t", variable_name)
                             
                         # when assign connector (IN) is detected, store the variable name to HOLD
                         if (lexeme_type == "ASSIGN_CONN"):
@@ -366,6 +366,7 @@ class ExpressionsEvaluator:
                                 new_token = self.get_variable("", new_token)
 
                             token_stack.append(new_token)
+                            new_token = new_token.replace('"', "")
 
                             if (value == "PRINTLN"):
                                 self.push_to_tokens_table("OUTPUT_WITH_LINE\t\t", value)
@@ -577,6 +578,7 @@ class Interpreter:
         print(str(line_count) + "\t\tPROGRAM_END\t\t\tEND")
         line_count += 1
         print(str(line_count) + "\t\tEND_OF_FILE\t\t\tEOF")
+        print("\n\n======== INTERPOL INTERPRETER TERMINATED ========")
 
 # Starts the program
 interpreter = Interpreter()
