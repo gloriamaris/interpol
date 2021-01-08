@@ -259,7 +259,7 @@ class ExpressionsEvaluator:
                             if (exists_int == False and exists_str == False):
                                 self.throw_error("Variable is not declared")
                             else:
-                                data_type = "int" if lexeme_type == "DECLARE_INT" else "str"
+                                data_type = "int" if exists_int == True else "str"
                                 should_replace = True
                                 value = input()
                                 
@@ -383,7 +383,6 @@ class ExpressionsEvaluator:
         
         return self.tokens_table
 
-                
 #
 #   TokenGenerator Class
 #   - used to clean comments annd generate tokens
@@ -520,6 +519,44 @@ class Interpreter:
         output = "".join(output)
         print(output)
     
+    def display_tokens_table(self, accumulated_tokens):
+        print("\n\n========= INTERPOL LEXEMES/TOKENS TABLE =========")
+        print("\n\nLINE NO.\tTOKENS\t\t\t\tLEXEMES")
+        
+        print("1\t\tPROGRAM_BEGIN\t\t\tBEGIN")
+        print("1\t\tEND_OF_STATEMENT\t\tEOS")
+
+        line_count = 0
+
+        for item in accumulated_tokens:
+            index = 0
+
+            while index < len(item):
+                print(item[index])
+                tokens = item[index].split("\t")
+                line_count = int(tokens[0])
+                index += 1
+
+        line_count += 1
+        print(str(line_count) + "\t\tPROGRAM_END\t\t\tEND")
+        line_count += 1
+        print(str(line_count) + "\t\tEND_OF_FILE\t\t\tEOF")
+    
+    def display_symbols_table(self):
+        print("\n\n================= SYMBOLS TABLE =================")
+        print("\n\nVARIABLE_NAME\t\tTYPE\t\t\tVALUE")
+        
+        intVariables = self.global_variables["int"]
+        strVariables = self.global_variables["str"]
+
+        if (len(intVariables) > 0):
+            for key in intVariables:
+                print(key + "\t\t\t" + "INTEGER\t\t\t" + intVariables[key])
+        
+        if (len(strVariables) > 0):
+            for key in strVariables:
+                print(key + "\t\t\t" + "STRING\t\t\t" + strVariables[key])
+
     def throw_error(self, message, line, line_num):
         print("\n{} at Line number [{}]".format(message, line_num))
         print("{}\n\n".format(line))
@@ -564,27 +601,13 @@ class Interpreter:
                     accumulated_tokens.append(tokens)
             
         print("\n<----------------- OUTPUT END -------------------")
-        print("\n\n========= INTERPOL LEXEMES/TOKENS TABLE =========")
-        print("\n\nLINE NO.\tTOKENS\t\t\t\tLEXEMES")
         
-        print("1\t\tPROGRAM_BEGIN\t\t\tBEGIN")
-        print("1\t\tEND_OF_STATEMENT\t\tEOS")
-
-        line_count = 0
-
-        for item in accumulated_tokens:
-            index = 0
-
-            while index < len(item):
-                print(item[index])
-                tokens = item[index].split("\t")
-                line_count = int(tokens[0])
-                index += 1
-
-        line_count += 1
-        print(str(line_count) + "\t\tPROGRAM_END\t\t\tEND")
-        line_count += 1
-        print(str(line_count) + "\t\tEND_OF_FILE\t\t\tEOF")
+        #   printing of the lexemes table
+        self.display_tokens_table(accumulated_tokens)
+        # printing of symbols table
+        self.display_symbols_table()
+            
+        
         print("\n\n======== INTERPOL INTERPRETER TERMINATED ========")
 
 # Starts the program
