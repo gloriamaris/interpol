@@ -519,6 +519,12 @@ class Interpreter:
         output = list(filter(None, output_list))
         output = "".join(output)
         print(output)
+    
+    def throw_error(self, message, line, line_num):
+        print("\n{} at Line number [{}]".format(message, line_num))
+        print("{}\n\n".format(line))
+
+        raise Exception(message)
 
     # Runs the program and asks for a file input to evalute
     def execute(self):
@@ -544,8 +550,9 @@ class Interpreter:
                 #
                 #   TODO: Add error trap here if the program does not start with BEGIN
                 #
-                if (count == 1 and line != "BEGIN"):
-                    is_valid_program = False
+
+                if (count == 1 and line.strip() != "BEGIN"):
+                    self.throw_error("Invalid file", line, count)
                 else:
                     tokenGenerator = TokenGenerator()
                     tokens = tokenGenerator.execute(line)
